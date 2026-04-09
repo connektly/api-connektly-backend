@@ -39,6 +39,7 @@ Server defaults to `http://127.0.0.1:3000`.
 Render note:
 - This service keeps `NODE_ENV=production`, so the build step must install dev dependencies too.
 - If you configure the service manually instead of using `render.yaml`, use `npm install --include=dev && npm run build` as the build command.
+- The production process runs compiled output with `node dist/bootstrap.js`, not `tsx`, to avoid runtime TypeScript loader issues on Render.
 
 ## Required Production Values
 
