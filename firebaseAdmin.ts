@@ -36,17 +36,87 @@ const normalizeServiceAccount = (serviceAccount: any) => {
   return serviceAccount;
 };
 
+const repairInlinePrivateKeyNewlines = (rawJson: string) => {
+  const privateKeyField = '"private_key"';
+  const fieldIndex = rawJson.indexOf(privateKeyField);
+  if (fieldIndex === -1) {
+    return rawJson;
+  }
+
+  const colonIndex = rawJson.indexOf(":", fieldIndex + privateKeyField.length);
+  if (colonIndex === -1) {
+    return rawJson;
+  }
+
+  const openingQuoteIndex = rawJson.indexOf('"', colonIndex);
+  if (openingQuoteIndex === -1) {
+    return rawJson;
+  }
+
+  let closingQuoteIndex = -1;
+  let escaped = false;
+
+  for (let index = openingQuoteIndex + 1; index < rawJson.length; index += 1) {
+    const character = rawJson[index];
+
+    if (character === '"' && !escaped) {
+      closingQuoteIndex = index;
+      break;
+    }
+
+    if (character === "\\" && !escaped) {
+      escaped = true;
+      continue;
+    }
+
+    escaped = false;
+  }
+
+  if (closingQuoteIndex === -1) {
+    return rawJson;
+  }
+
+  const rawPrivateKey = rawJson.slice(openingQuoteIndex + 1, closingQuoteIndex);
+  const repairedPrivateKey = rawPrivateKey
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .replace(/\n/g, "\\n");
+
+  if (repairedPrivateKey === rawPrivateKey) {
+    return rawJson;
+  }
+
+  return `${rawJson.slice(0, openingQuoteIndex + 1)}${repairedPrivateKey}${rawJson.slice(closingQuoteIndex)}`;
+};
+
+const parseServiceAccountJson = (rawJson: string) => {
+  try {
+    return normalizeServiceAccount(JSON.parse(rawJson));
+  } catch (error) {
+    const repairedJson = repairInlinePrivateKeyNewlines(rawJson);
+
+    if (repairedJson !== rawJson) {
+      return normalizeServiceAccount(JSON.parse(repairedJson));
+    }
+
+    throw error;
+  }
+};
+
 const resolveServiceAccount = (): ServiceAccountResolution => {
   const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
   if (serviceAccountJson) {
     try {
       return {
-        serviceAccount: normalizeServiceAccount(JSON.parse(serviceAccountJson)),
+        serviceAccount: parseServiceAccountJson(serviceAccountJson),
         source: "FIREBASE_SERVICE_ACCOUNT_JSON",
         resolvedPath: null
       };
     } catch (error) {
-      throw new Error(`Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON: ${error instanceof Error ? error.message : String(error)}. ` +
+        `Ensure the JSON is valid and the private_key field preserves escaped newline sequences, or use FIREBASE_SERVICE_ACCOUNT_PATH instead.`
+      );
     }
   }
 
