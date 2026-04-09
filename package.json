@@ -4,8 +4,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch server.ts",
-    "start": "tsx server.ts",
+    "dev": "tsx watch bootstrap.ts",
+    "start": "tsx bootstrap.ts",
     "build": "tsc --noEmit",
     "lint": "tsc --noEmit"
   },
