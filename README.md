@@ -36,6 +36,10 @@ Server defaults to `http://127.0.0.1:3000`.
 4. Add all required env vars from `.env.example`.
 5. Deploy.
 
+Render note:
+- This service keeps `NODE_ENV=production`, so the build step must install dev dependencies too.
+- If you configure the service manually instead of using `render.yaml`, use `npm install --include=dev && npm run build` as the build command.
+
 ## Required Production Values
 
 - `APP_URL=https://app.connektly.in`
